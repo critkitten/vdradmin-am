@@ -763,14 +763,28 @@ sub processRequest {
 
     $ACCEPT_GZIP = 0;
 
-    #print("REQUEST: $raw_request\n");
-    my $raw_request = $1 if ($req->as_string =~ /^([^\r\n]++)\r*\n/);
+    my $raw_request;
+    if ($req->as_string =~ /^([^\r\n]++)\r*\n/) {
+    	$raw_request = \$1;
+	} else {
+    	croak("Could't extract raw request");
+    }
     Log(LOG_DEBUG, sprintf("[CLIENT(%d)] $raw_request\n", $Client->fileno));
-    if ($req->uri =~ /(\/[\w\.\/-\:]*)(?:\?([\w=&\.\+\%-\:\!\@\~\#]+))?$/) {
-        ($Request, $Query) = ($1, $2);
+    my $sanitized_uri = sanitize_uri($req->uri);
+
+    if ($sanitized_uri =~ /(\/[\w\.\/-\:]*)(?:\?([\w=&\.\+\%-\:\!\@\~\#]+))?$/) {
+    	($Request, $Query) = (\$1, \$2);
     } else {
-        Error("404", gettext("Not found"), gettext("The requested URL was not found on this server!"));
-        return;
+    	Error("404", gettext("Not found"), gettext("The requested URL was not found on this server!"));
+    return;
+    }
+
+    sub sanitize_uri {
+    my ($uri) = @_;
+    my $url_obj = URI->new($uri);
+    my $sanitized_uri = $url_obj->canonical;
+    return $sanitized_uri;
+    	return $sanitized_uri;
     }
 
     $Request =~ s|^/+|/|;
@@ -1184,7 +1198,7 @@ sub get_name_from_uniqid {
 #            return $_->{name} if ($_->{uniq_id} eq $uniq_id);
 #        }
 
-        # Es darf nach Spec nur eine Übereinstimmung geben
+        # Es darf nach Spec nur eine Ãœbereinstimmung geben
         if (scalar(@C) == 1) {
             return $C[0]->{name};
         }
@@ -1198,7 +1212,7 @@ sub get_name_from_vdrid {
         # Kanalliste nach identischer vdr_id durchsuchen
         my @C = grep($_->{vdr_id} == $vdr_id, @{$CHAN{$CHAN_FULL}->{channels}});
 
-        # Es darf nach Spec nur eine Übereinstimmung geben
+        # Es darf nach Spec nur eine Ãœbereinstimmung geben
         if (scalar(@C) == 1) {
             return $C[0]->{name};
         }
@@ -1212,7 +1226,7 @@ sub get_channel_from_vdrid {
         # Kanalliste nach identischer vdr_id durchsuchen
         my @C = grep($_->{vdr_id} == $vdr_id, @{$CHAN{$CHAN_FULL}->{channels}});
 
-        # Es darf nach Spec nur eine Übereinstimmung geben
+        # Es darf nach Spec nur eine Ãœbereinstimmung geben
         if (scalar(@C) == 1) {
             return $C[0];
         }
@@ -1226,7 +1240,7 @@ sub get_transponder_from_vdrid {
         # Kanalliste nach identischer vdr_id durchsuchen
         my @C = grep($_->{vdr_id} == $vdr_id, @{$CHAN{$CHAN_FULL}->{channels}});
 
-        # Es darf nach Spec nur eine Übereinstimmung geben
+        # Es darf nach Spec nur eine Ãœbereinstimmung geben
         if (scalar(@C) == 1) {
             return ("$C[0]->{source}-$C[0]->{frequency}-$C[0]->{polarization}");
         }
@@ -1240,7 +1254,7 @@ sub get_ca_from_vdrid {
         # Kanalliste nach identischer vdr_id durchsuchen
         my @C = grep($_->{vdr_id} == $vdr_id, @{$CHAN{$CHAN_FULL}->{channels}});
 
-        # Es darf nach Spec nur eine Übereinstimmung geben
+        # Es darf nach Spec nur eine Ãœbereinstimmung geben
         if (scalar(@C) == 1) {
             return ($C[0]->{ca});
         }
@@ -2254,7 +2268,7 @@ sub AT_ProgTimer {
                 if ($smtp) {
                     if ($CONFIG{MAIL_AUTH_USER} ne "") {
                         $smtp->auth($CONFIG{MAIL_AUTH_USER}, $CONFIG{MAIL_AUTH_PASS}) || return;
-                    }
+                    }/
                     $smtp->mail("$CONFIG{MAIL_FROM}");
                     $smtp->to($CONFIG{MAIL_TO});
                     $smtp->data();
@@ -3054,7 +3068,7 @@ sub epgsearch_Param2Line {
         $directory =~ s/:/\|/g;
     }
 
-    #TODO: $searchtimer_from & $searchtimer_until auf korrektes Format prüfen
+    #TODO: $searchtimer_from & $searchtimer_until auf korrektes Format prÃ¼fen
     my $searchtimer_from = $q->param("searchtimer_from");
     if ($searchtimer_from) {
         $searchtimer_from = my_mktime("0", "0", substr($searchtimer_from, 8, 2), substr($searchtimer_from, 5, 2) - 1, substr($searchtimer_from, 0, 4));
@@ -5367,7 +5381,7 @@ sub encode_RecTitle {
         # VFAT on
         for ($i = 0 ; $i < length($title) ; $i++) {
             $c = substr($title, $i, 1);
-            unless ($c =~ /[öäüßÖÄÜA-Za-z0123456789_!@\$%&()+,.\-;=~ ]/) {
+            unless ($c =~ /[Ã¶Ã¤Ã¼ÃŸÃ–Ã„ÃœA-Za-z0123456789_!@\$%&()+,.\-;=~ ]/) {
                 $newtitle .= sprintf("#%02X", ord($c));
             } else {
                 $newtitle .= $c;
